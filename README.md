@@ -52,16 +52,27 @@ README.md
 
 ## Verification
 
-The transmitter was verified for:
+The SystemVerilog testbench captures the serial TX output, reconstructs the transmitted frame, verifies data integrity, checks parity correctness, and automatically reports PASS/FAIL results.
 
 ### Test 1: No Parity
-Result: PASS
+- Data transmitted: 0x55
+- Data reconstructed from TX line: 0x55
+- Stop bit verified
+- Result: PASS
 
 ### Test 2: Odd Parity
-Result: PASS
+- Data transmitted: 0xA5
+- Data reconstructed from TX line: 0xA5
+- Odd parity verified
+- Stop bit verified
+- Result: PASS
 
 ### Test 3: Even Parity
-Result: PASS
+- Data transmitted: 0x3C
+- Data reconstructed from TX line: 0x3C
+- Even parity verified
+- Stop bit verified
+- Result: PASS
 
 ---
 
