@@ -36,45 +36,93 @@ end
 //--------------------------------------------------
 // SystemVerilog Task
 //--------------------------------------------------
-task automatic check_parity(
-    input logic [7:0] data,
+task automatic verify_frame(
+    input logic [7:0] expected_data,
     input logic [1:0] parity_mode
 );
 
+    logic [7:0] received_data;
+    logic received_parity;
     logic expected_parity;
+    integer i;
 
     begin
 
-        case(parity_mode)
+        // Wait until transmission starts
+        wait(tx_busy == 1);
 
-            2'b00:
-                $display("PASS : NO PARITY MODE");
+         // START bit
+ @(posedge baud_tick);
+ @(posedge baud_tick);
+ #1;
 
-            2'b01:
-            begin
-                expected_parity = ~(^data);
+ if(tx != 0)
+     $display("FAIL : START BIT ERROR");
+        
+        
+          
 
-                if(expected_parity == dut.parity_bit)
-                    $display("PASS : ODD PARITY");
-                else
-                    $display("FAIL : ODD PARITY");
-            end
+        for(i=0; i<8; i=i+1)
+begin
+    @(posedge baud_tick);
+    #5;
+    received_data[i] = tx;
+end
+        
 
-            2'b10:
-            begin
-                expected_parity = (^data);
+        // DATA check
+        if(received_data == expected_data)
+            $display("PASS : DATA MATCH (%h)", received_data);
+        else
+            $display("FAIL : DATA Expected=%h Received=%h",
+                     expected_data, received_data);
 
-                if(expected_parity == dut.parity_bit)
-                    $display("PASS : EVEN PARITY");
-                else
-                    $display("FAIL : EVEN PARITY");
-            end
+        // PARITY
+        if(parity_mode != 2'b00)
+        begin
+            @(posedge baud_tick);
+            #1;
+            received_parity = tx;
 
-        endcase
+            case(parity_mode)
+
+                2'b01:
+                begin
+                    expected_parity = ~(^expected_data);
+
+                    if(received_parity == expected_parity)
+                        $display("PASS : ODD PARITY VERIFIED");
+                    else
+                        $display("FAIL : ODD PARITY ERROR");
+                end
+
+                2'b10:
+                begin
+                    expected_parity = (^expected_data);
+
+                    if(received_parity == expected_parity)
+                        $display("PASS : EVEN PARITY VERIFIED");
+                    else
+                        $display("FAIL : EVEN PARITY ERROR");
+                end
+
+            endcase
+        end
+
+        // STOP bit
+        @(posedge baud_tick);
+        #1;
+
+        if(tx == 1)
+            $display("PASS : STOP BIT VERIFIED");
+        else
+            $display("FAIL : STOP BIT ERROR");
 
     end
 
 endtask
+
+      
 
 //--------------------------------------------------
 // Test Sequence
@@ -96,36 +144,54 @@ initial begin
 
     // TEST 1
     $display("\nTEST 1 : NO PARITY");
-    tx_data = 8'h55;
-    cfg_parity = 2'b00;
-    tx_start = 1;
-    #10;
-    tx_start = 0;
 
-    #400;
-    check_parity(tx_data,cfg_parity);
+fork
+    verify_frame(8'h55,2'b00);
+join_none
+
+tx_data = 8'h55;
+cfg_parity = 2'b00;
+tx_start = 1;
+
+#10;
+tx_start = 0;
+
+#500;
 
     // TEST 2
     $display("\nTEST 2 : ODD PARITY");
-    tx_data = 8'hA5;
-    cfg_parity = 2'b01;
-    tx_start = 1;
-    #10;
-    tx_start = 0;
 
-    #400;
-    check_parity(tx_data,cfg_parity);
+fork
+    verify_frame(8'hA5,2'b01);
+join_none
+
+tx_data = 8'hA5;
+cfg_parity = 2'b01;
+tx_start = 1;
+
+#10;
+tx_start = 0;
+
+#500;
 
     // TEST 3
-    $display("\nTEST 3 : EVEN PARITY");
-    tx_data = 8'h3C;
-    cfg_parity = 2'b10;
-    tx_start = 1;
-    #10;
-    tx_start = 0;
+   $display("\nTEST 3 : EVEN PARITY");
 
-    #400;
-    check_parity(tx_data,cfg_parity);
+fork
+    verify_frame(8'h3C,2'b10);
+join_none
+
+tx_data = 8'h3C;
+cfg_parity = 2'b10;
+tx_start = 1;
+
+#10;
+tx_start = 0;
+
+#500;
+
+    
+   
 
     $display("\n=================================");
     $display("ALL TESTS COMPLETED");
