@@ -78,6 +78,8 @@ The SystemVerilog testbench captures the serial TX output, reconstructs the tran
 
 ## Simulation Results
 
+The transmitted serial frame was reconstructed from the TX line and verified against the expected data and parity values. All test cases passed successfully.
+
 Console output screenshot:
 - simulation_output.png
 
